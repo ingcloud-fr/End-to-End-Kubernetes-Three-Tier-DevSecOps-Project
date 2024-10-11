@@ -1,14 +1,14 @@
 pipeline {
     agent any 
     tools {
-        jdk 'jdk'
-        nodejs 'nodejs'
+        jdk 'JDK17'
+        nodejs 'nodejs14'
     }
     environment  {
-        SCANNER_HOME=tool 'sonar-scanner'
+        SCANNER_HOME=tool 'my-sonar-scanner'
         AWS_ACCOUNT_ID = credentials('ACCOUNT_ID')
-        AWS_ECR_REPO_NAME = credentials('ECR_REPO1')
-        AWS_DEFAULT_REGION = 'us-east-1'
+        AWS_ECR_REPO_NAME = credentials('ECR_REPO_BACKEND')
+        AWS_DEFAULT_REGION = 'eu-west-3'
         REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/"
     }
     stages {
@@ -19,13 +19,14 @@ pipeline {
         }
         stage('Checkout from Git') {
             steps {
-                git credentialsId: 'GITHUB', url: 'https://github.com/AmanPathak-DevOps/End-to-End-Kubernetes-Three-Tier-DevSecOps-Project.git'
+                //git credentialsId: 'GITHUB', url: 'https://github.com/AmanPathak-DevOps/End-to-End-Kubernetes-Three-Tier-DevSecOps-Project.git'
+                git branch: 'main', credentialsId: 'GITHUB', url: 'https://github.com/ingcloud-fr/End-to-End-Kubernetes-Three-Tier-DevSecOps-Project.git'
             }
         }
         stage('Sonarqube Analysis') {
             steps {
                 dir('Application-Code/frontend') {
-                    withSonarQubeEnv('sonar-server') {
+                    withSonarQubeEnv('my-sonar-server') {
                         sh ''' $SCANNER_HOME/bin/sonar-scanner \
                         -Dsonar.projectName=three-tier-frontend \
                         -Dsonar.projectKey=three-tier-frontend '''
@@ -40,14 +41,31 @@ pipeline {
                 }
             }
         }
-        stage('OWASP Dependency-Check Scan') {
-            steps {
-                dir('Application-Code/frontend') {
-                    dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
-                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-                }
-            }
-        }
+
+        // COMMENTE CAR DEMANDE BEAUCOUP DE RESSOURCES - CA TELECHARGE LES ISSUES ET CA S'ARRETE A 64%
+        // A TESTR SUR UNE EC2 DEDIE
+        // stage('OWASP Dependency-Check Scan') {
+        //     steps {
+        //         dir('Application-Code/frontend') {
+        //             withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+        //                 script {
+        //                     try {
+        //                         dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit --nvdApiKey=${NVD_API_KEY}', odcInstallation: 'DP-Check'
+        //                         dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+        //                     } catch (Exception e) {
+        //                         // Afficher un message d'erreur
+        //                         echo "OWASP Dependency-Check a échoué: ${e.getMessage()}"
+        //                         // Stopper le pipeline (ou non)
+        //                         // error("Échec de l'analyse de sécurité OWASP Dependency-Check")
+        //                     }
+        //                 }
+        //             }
+        //         } 
+        //     }   
+        // }
+
+
+        
         stage('Trivy File Scan') {
             steps {
                 dir('Application-Code/frontend') {
@@ -82,28 +100,41 @@ pipeline {
         }
         stage('Checkout Code') {
             steps {
-                git credentialsId: 'GITHUB', url: 'https://github.com/AmanPathak-DevOps/End-to-End-Kubernetes-Three-Tier-DevSecOps-Project.git'
+                //git credentialsId: 'GITHUB', url: 'https://github.com/AmanPathak-DevOps/End-to-End-Kubernetes-Three-Tier-DevSecOps-Project.git'
+                git branch: 'main', credentialsId: 'GITHUB', url: 'https://github.com/ingcloud-fr/End-to-End-Kubernetes-Three-Tier-DevSecOps-Project.git'
             }
         }
         stage('Update Deployment file') {
             environment {
                 GIT_REPO_NAME = "End-to-End-Kubernetes-Three-Tier-DevSecOps-Project"
-                GIT_USER_NAME = "AmanPathak-DevOps"
+                GIT_USER_NAME = "ingcloud-fr"
             }
             steps {
                 dir('Kubernetes-Manifests-file/Frontend') {
-                    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+                    withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                         sh '''
-                            git config user.email "aman07pathak@gmail.com"
-                            git config user.name "AmanPathak-DevOps"
+                            git config user.email "jenkins@ingcloud.fr"
+                            git config user.name "From-Jenkins-Pipeline"
+                            
                             BUILD_NUMBER=${BUILD_NUMBER}
-                            echo $BUILD_NUMBER
-                            imageTag=$(grep -oP '(?<=frontend:)[^ ]+' deployment.yaml)
-                            echo $imageTag
-                            sed -i "s/${AWS_ECR_REPO_NAME}:${imageTag}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}/" deployment.yaml
+                            echo "BUILD_NUMBER = $BUILD_NUMBER"
+
+                            # Afficher la valeur de imageTag
+                            imageTag=$(grep -oP '(?<=devsecops-frontend-ecr:)[^ ]+' deployment.yaml)
+                            echo "imageTag = $imageTag"
+
+                            # Afficher la commande sed qui sera exécutée
+                            echo "Exécution de la commande sed pour remplacer l'image :"
+                            sed -i "s|${REPOSITORY_URI}${AWS_ECR_REPO_NAME}:${imageTag}|${REPOSITORY_URI}${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}|" deployment.yaml
+
+                            # Afficher le contenu du fichier après l'exécution de sed
+                            echo "Contenu du fichier deployment.yaml après modifications :"
+                            cat deployment.yaml
+
                             git add deployment.yaml
                             git commit -m "Update deployment Image to version \${BUILD_NUMBER}"
-                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
+
+                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
                         '''
                     }
                 }
