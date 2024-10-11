@@ -1,0 +1,32 @@
+# Terraform files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore any .tfvars files that contain sensitive data
+*.tfvars
+*.tfvars.json
+
+# Terraform plan files
+*.tfplan
+
+# Ignore SSH key files
+*.pem
+*.key
+*key*
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+
+# Ignore compiled binary files
+*.exe
+*.dll
+*.so
+*.dylib
