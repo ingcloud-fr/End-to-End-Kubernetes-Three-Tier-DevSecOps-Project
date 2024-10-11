@@ -98,11 +98,26 @@ pipeline {
                         sh '''
                             git config user.email "jenkins@ingcloud.fr"
                             git config user.name "From-Jenkins-Pipeline"
+                            
+                            # Afficher le contenu du fichier avant les modifications
+                            echo "Contenu du fichier deployment.yaml avant modifications :"
+                            cat deployment.yaml
+
                             BUILD_NUMBER=${BUILD_NUMBER}
-                            echo $BUILD_NUMBER
+                            echo "BUILD_NUMBER = $BUILD_NUMBER"
+
+                            # Afficher la valeur de imageTag
                             imageTag=$(grep -oP '(?<=backend:)[^ ]+' deployment.yaml)
-                            echo $imageTag
-                            sed -i "s/${AWS_ECR_REPO_NAME}:${imageTag}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}/" deployment.yaml
+                            echo "imageTag = $imageTag"
+
+                            # Afficher la commande sed qui sera exécutée
+                            echo "Exécution de la commande sed pour remplacer l'image :"
+                            sed -i "s|${REPOSITORY_URI}${AWS_ECR_REPO_NAME}:${imageTag}|${REPOSITORY_URI}${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}|" deployment.yaml
+
+                            # Afficher le contenu du fichier après l'exécution de sed
+                            echo "Contenu du fichier deployment.yaml après modifications :"
+                            cat deployment.yaml
+
                             git add deployment.yaml
                             git commit -m "Update deployment Image to version \${BUILD_NUMBER}"
                             git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
