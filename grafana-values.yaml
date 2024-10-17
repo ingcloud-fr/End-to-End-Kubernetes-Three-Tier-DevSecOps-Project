@@ -1,0 +1,19 @@
+# grafana-values.yaml
+service:
+  type: LoadBalancer
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+
+persistence:
+  enabled: true
+  storageClassName: gp2
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server.prometheus.svc.cluster.local:9090
+        access: proxy
+        isDefault: true
