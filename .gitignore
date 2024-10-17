@@ -10,8 +10,8 @@ override.tf.json
 *_override.tf.json
 
 # Ignore any .tfvars files that contain sensitive data
-*.tfvars
-*.tfvars.json
+# *.tfvars
+# *.tfvars.json
 
 # Terraform plan files
 *.tfplan
@@ -19,7 +19,7 @@ override.tf.json
 # Ignore SSH key files
 *.pem
 *.key
-*key*
+*.pub
 
 # Ignore logs and temporary files
 *.log

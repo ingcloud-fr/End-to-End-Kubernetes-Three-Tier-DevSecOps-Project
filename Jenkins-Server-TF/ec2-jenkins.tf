@@ -2,7 +2,7 @@ resource "aws_instance" "ec2-jenkins" {
   ami           = data.aws_ami.ami.image_id
   instance_type = "t3.medium"
   # Pour une clé déjà existante sur AWS
-  #key_name               = var.key-name
+  # key_name               = var.key-name
   # Clé que l'on a crée dans keypairs.tf
   key_name               = aws_key_pair.jenkins-devsecops-key.key_name
   subnet_id              = aws_subnet.public-subnet.id
@@ -12,7 +12,7 @@ resource "aws_instance" "ec2-jenkins" {
     volume_size = 30
   }
 
-  # Utilisation de user_data (on va plutôt utiliser le provisioning TF)
+  # Utilisation de user_data (mais on va plutôt utiliser le provisioning TF)
   # user_data = templatefile("./tools-install.sh", {})
 
   provisioner "file" {
